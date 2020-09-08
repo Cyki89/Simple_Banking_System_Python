@@ -8,11 +8,30 @@ class Account:
         self.pin = self._generate_pin()
         self.balance = 0
 
+    def get_account_identifier(self):
+        return self.card_id[7:-1]
+
     def _generate_card_id(self):
-        issuer_identification_number = 400000
-        customer_account_number = str(random.randint(0, 999999999)).zfill(9)
-        checksum = random.randint(0, 9)
-        return f'{issuer_identification_number}{customer_account_number}{checksum}'
+        bank_identification_number = '400000'
+        account_identifier = str(random.randint(0, 999999999)).zfill(9)
+        checksum = self._generate_checksum(
+            bank_identification_number, account_identifier)
+        return f'{bank_identification_number}{account_identifier}{checksum}'
+
+    def _generate_checksum(self, bank_identification_number, account_identifier):
+        digits = bank_identification_number + account_identifier
+        digits_list = self._transform_digits(digits)
+        return self._select_checksum(digits_list)
+
+    def _transform_digits(self, digits):
+        # multiple odd number by 2
+        digits_list = [int(digit) * 2 if i % 2 == 0 else int(digit)
+                       for i, digit in enumerate(digits)]
+        # subtract 9 from digits greater than 9
+        return [digit - 9 if digit > 9 else digit for digit in digits_list]
+
+    def _select_checksum(self, digits_list):
+        return (10 - sum(digits_list) % 10) % 10
 
     def _generate_pin(self):
         return f'{random.randint(0, 9999)}'.zfill(4)
@@ -20,12 +39,14 @@ class Account:
 
 class AccountSupervisor:
     def __init__(self):
+        self.account_identifiers = set()
         self.accounts = {}
 
     def add_account(self):
         account = Account()
-        if account.card_id in self.accounts.keys():
+        if account.get_account_identifier() in self.account_identifiers:
             return self.add_account()
+        self.account_identifiers.add(account.get_account_identifier())
         self.accounts[account.card_id] = account
         return account
 
