@@ -1,14 +1,16 @@
-from account import AccountSupervisor
+from account import Account, AccountGenerator, AccountSupervisor
+from utils import singleton
 
 
+@singleton
 class BankSystem:
-    def __init__(self):
+    def __init__(self, database):
         self.login_state = LogInState(self)
         self.logout_state = LogOutState(self)
         self.state = self.logout_state
 
         self.account = None
-        self.supervisor = AccountSupervisor()
+        self.supervisor = AccountSupervisor(database)
 
     def show(self):
         self.state.show()
@@ -33,16 +35,21 @@ class BankSystem:
     def get_account(self):
         return self.account
 
+    def get_accounts(self):
+        return self.supervisor.database.get_accounts()
+
     def get_balance(self):
         if self.account:
             return self.account.balance
 
 
+@singleton
 class LogOutState:
     def __init__(self, system):
         self.system = system
 
-    def show(self):
+    @staticmethod
+    def show():
         print('1. Create an account')
         print('2. Log into account')
         print('0. Exit')
@@ -67,6 +74,15 @@ class LogOutState:
                'Your card PIN:\n'
                f'{account.pin}\n'))
 
+    def _get_account(self):
+        print('\nEnter your card number:')
+        card_id = input()
+
+        print('Enter your PIN:')
+        pin = input()
+
+        return self.system.supervisor.get_account(card_id, pin)
+
     def _log_into(self):
         account = self._get_account()
         if not account:
@@ -77,17 +93,8 @@ class LogOutState:
         self.system.account = account
         print('\nYou have successfully logged in!\n')
 
-    def _get_account(self):
-        print('\nEnter your card number:')
-        card_id = input()
-
-        print('Enter your PIN:')
-        pin = input()
-
-        account = self.system.supervisor.get_account(card_id, pin)
-        return account
-
-    def _exit_app(self):
+    @staticmethod
+    def _exit_app():
         print('\nBye!')
         return 'exit'
 
@@ -95,11 +102,13 @@ class LogOutState:
         return 'LogOut'
 
 
+@singleton
 class LogInState:
     def __init__(self, system):
         self.system = system
 
-    def show(self):
+    @staticmethod
+    def show():
         print('1. Balance')
         print('2. Log out')
         print('0. Exit')
@@ -124,14 +133,10 @@ class LogInState:
         self.system.account = None
         print('\nYou have successfully logged out!\n')
 
-    def _exit_app(self):
+    @staticmethod
+    def _exit_app():
         print('\nBye!')
         return 'exit'
 
     def __str__(self):
         return 'LogIn'
-
-
-if __name__ == '__main__':
-    system = BankSystem()
-    system.main_loop()

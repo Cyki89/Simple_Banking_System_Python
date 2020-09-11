@@ -1,15 +1,23 @@
+from utils import singleton
+from sqlite3 import Error, IntegrityError
 import random
 random.seed(43)
 
 
 class Account:
-    def __init__(self):
-        self.card_id = self._generate_card_id()
-        self.pin = self._generate_pin()
-        self.balance = 0
+    def __init__(self, card_id, pin, balance):
+        self.card_id = card_id
+        self.pin = pin
+        self.balance = balance
 
-    def get_account_identifier(self):
-        return self.card_id[7:-1]
+
+@singleton
+class AccountGenerator:
+    def generate_account(self):
+        card_id = self._generate_card_id()
+        pin = self._generate_pin()
+        balance = 0
+        return card_id, pin, balance
 
     def _generate_card_id(self):
         bank_identification_number = '400000'
@@ -23,52 +31,40 @@ class Account:
         digits_list = self._transform_digits(digits)
         return self._select_checksum(digits_list)
 
-    def _transform_digits(self, digits):
+    @staticmethod
+    def _transform_digits(digits):
         # multiple odd number by 2
         digits_list = [int(digit) * 2 if i % 2 == 0 else int(digit)
                        for i, digit in enumerate(digits)]
         # subtract 9 from digits greater than 9
         return [digit - 9 if digit > 9 else digit for digit in digits_list]
 
-    def _select_checksum(self, digits_list):
+    @staticmethod
+    def _select_checksum(digits_list):
         return (10 - sum(digits_list) % 10) % 10
 
-    def _generate_pin(self):
+    @staticmethod
+    def _generate_pin():
         return f'{random.randint(0, 9999)}'.zfill(4)
 
 
+@singleton
 class AccountSupervisor:
-    def __init__(self):
-        self.account_identifiers = set()
-        self.accounts = {}
+    def __init__(self, database):
+        self.database = database
+        self.account_generator = AccountGenerator()
 
     def add_account(self):
-        account = Account()
-        if account.get_account_identifier() in self.account_identifiers:
+        account_properties = self.account_generator.generate_account()
+        card_id, pin, balance = account_properties
+
+        try:
+            self.database.add_account(card_id, pin, balance)
+            return Account(*account_properties)
+        except IntegrityError:
+            print('Integrity Error')
             return self.add_account()
-        self.account_identifiers.add(account.get_account_identifier())
-        self.accounts[account.card_id] = account
-        return account
 
     def get_account(self, card_id, pin):
-        if self._is_valid_account(card_id, pin):
-            return self.accounts[card_id]
-        return None
-
-    def _is_valid_account(self, card_id, pin):
-        return card_id in self.accounts and self.accounts[card_id].pin == pin
-
-
-if __name__ == '__main__':
-    supervisior = AccountSupervisor()
-
-    supervisior.add_account()
-    supervisior.add_account()
-    supervisior.add_account()
-
-    print(supervisior.accounts)
-
-    for card_id, account in supervisior.accounts.items():
-        print(account.card_id, account.pin, account.balance)
-
-    # print(supervisior.get_account("4000000413947254"))
+        account_properties = self.database.get_account(card_id, pin)
+        return Account(*account_properties) if account_properties else None
