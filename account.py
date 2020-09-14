@@ -1,6 +1,8 @@
-from utils import singleton
-from sqlite3 import Error, IntegrityError
 import random
+from sqlite3 import IntegrityError
+
+from utils import singleton
+
 random.seed(43)
 
 
@@ -36,6 +38,7 @@ class AccountGenerator:
         # multiple odd number by 2
         digits_list = [int(digit) * 2 if i % 2 == 0 else int(digit)
                        for i, digit in enumerate(digits)]
+
         # subtract 9 from digits greater than 9
         return [digit - 9 if digit > 9 else digit for digit in digits_list]
 
@@ -62,9 +65,17 @@ class AccountSupervisor:
             self.database.add_account(card_id, pin, balance)
             return Account(*account_properties)
         except IntegrityError:
-            print('Integrity Error')
             return self.add_account()
 
     def get_account(self, card_id, pin):
         account_properties = self.database.get_account(card_id, pin)
         return Account(*account_properties) if account_properties else None
+
+    def add_income(self, card_id, income):
+        self.database.add_income(card_id, income)
+
+    def close_account(self, account):
+        self.database.close_account(account.card_id)
+
+    def check_account(self, card_id):
+        return self.database.check_account(card_id)

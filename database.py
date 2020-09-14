@@ -41,14 +41,33 @@ class Database:
         self.conn.commit()
 
     def get_account(self, number, pin):
-        sql_get_account = f""" Select number, pin, balance from card 
-                               where {number} = number and {pin} = pin """
+        sql_get_account = f""" SELECT number, pin, balance FROM card 
+                               WHERE {number} = number AND {pin} = pin """
         self.cursor.execute(sql_get_account)
         account_properties = self.cursor.fetchone()
         return account_properties
 
+    def add_income(self, number, income):
+        sql_add_income = f""" UPDATE card 
+                              SET balance = balance + {income}
+                              WHERE {number} = number """
+        self.cursor.execute(sql_add_income)
+        self.conn.commit()
+
+    def close_account(self, number):
+        sql_close_account = f""" DELETE FROM card 
+                                 WHERE {number} = number """
+        self.cursor.execute(sql_close_account)
+        self.conn.commit()
+
+    def check_account(self, number):
+        sql_check_account = f""" SELECT * FROM card 
+                                 WHERE {number} = number """
+        self.cursor.execute(sql_check_account)
+        return self.cursor.fetchone() != None
+
     def get_accounts(self):
-        sql_get_account = f""" Select * from card """
+        sql_get_account = f""" SELECT * FROM card """
         self.cursor.execute(sql_get_account)
         accounts = self.cursor.fetchall()
         return accounts
